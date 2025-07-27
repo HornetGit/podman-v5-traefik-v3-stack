@@ -1,0 +1,183 @@
+# Podman Traefik Fullstack Baseline
+# Copyright (c) 2025 [XCS HornetGit]
+# Updated: 23JUL2025
+# Licensed under __ License
+
+services:
+
+  traefik:
+    image: "${MINIAPP_TRAEFIK_IMAGE}" # "traefik:latest"
+    container_name: ${MINIAPP_TRAEFIK_IMAGE_CONTAINER_NAME} # miniapp_traefik
+    env_file:
+      - .env.dev
+    ports:
+      # frontend (and backend for testing/debugging) web-service
+      - "${MINIAPP_TRAEFIK_HTTP_PORT_HOST}:${MINIAPP_TRAEFIK_HTTP_PORT_CONT}" 
+      
+      # traefik dashboard
+      - "${MINIAPP_TRAEFIK_DASHBOARD_PORT_HOST}:${MINIAPP_TRAEFIK_DASHBOARD_PORT_CONT}"
+
+      # HTTPS entrypoint 
+      - "${MINIAPP_TRAEFIK_HTTPS_PORT_HOST}:${MINIAPP_TRAEFIK_HTTPS_PORT_CONT}"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro         # static config
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro         # dynamic config
+      - ./traefik/logs/access.log:/etc/traefik/logs/access.log
+      - ./traefik/logs/traefik.log:/etc/traefik/logs/traefik.log
+      - ./traefik/certs:/etc/traefik/certs:ro                     # certificates
+      - ./traefik/acme/acme.json:/etc/traefik/acme/acme.json      # json file: do NOT set read-only !
+      - "${MINIAPP_TRAEFIK_PODMAN_SOCK}:/var/run/docker.sock:ro"  # podman socket exported by setup_containers.sh
+    networks:
+      - ${NETWORK_PUBLIC_NAME}
+    labels:
+      - "traefik.enable=true"
+      # HTTP dashboard router      
+      - 'traefik.http.routers.dashboard.rule=Host("${MINIAPP_TRAEFIK_DOMAIN}")'
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=dashboard"
+
+      # Middleware call (see traefik.yml), for redirecting http to https, as defined by the file provider
+      # pointing to  dynamic.yml (see "@file")
+      - "traefik.http.routers.dashboard.middlewares=redirect-to-https@file"
+      # HTTPS dashboard router
+      - 'traefik.http.routers.dashboard-secure.rule=Host("${MINIAPP_TRAEFIK_DOMAIN}")' 
+      - "traefik.http.routers.dashboard-secure.service=api@internal"
+      - "traefik.http.routers.dashboard-secure.entrypoints=websecure"
+      - "traefik.http.routers.dashboard-secure.tls=true" # TLS on https (NOT on http)
+
+  postgres:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+      image: custom-postgres:${MINIAPP_SW_VERSION_TAG}
+    restart: always
+    container_name: ${MINIAPP_DB_CONTAINER_NAME}
+    env_file:
+      - .env.dev
+    environment:
+      POSTGRES_DB: ${MINIAPP_DB_NAME}
+      POSTGRES_USER: ${MINIAPP_DB_USER}
+      POSTGRES_PASSWORD: ${MINIAPP_DB_PASSWORD}
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${MINIAPP_DB_PORT}:${MINIAPP_DB_PORT}"
+    networks:
+      - ${NETWORK_PRIVATE_NAME}
+
+  frontend:
+    image: "nginx:${MINIAPP_SW_VERSION_TAG}"  # Use alpine for smaller size
+    # hostname: '{{.Node.Hostname}}'
+    env_file:
+      - .env.dev
+    container_name: ${MINIAPP_FRONTEND_CONTAINER_NAME}
+    restart: always
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - ${NETWORK_PUBLIC_NAME}
+    labels:
+      # enable traefik in each service where you want to allow traefik auto-discovering
+      - "traefik.enable=true"
+      # HTTP router web-service (port 80 in container, accessed via 8000 on host)
+      # - "traefik.http.routers.frontend.rule=Host(`frontend.localhost`)"
+      - 'traefik.http.routers.frontend.rule=Host("${MINIAPP_FRONTEND_DOMAIN}")'
+      - "traefik.http.routers.frontend.entrypoints=web-service"
+      - "traefik.docker.network=${NETWORK_PUBLIC_NAME}"
+      # HTTPS router
+      # - "traefik.http.routers.frontend-secure.rule=Host(`frontend.localhost`)"
+      - 'traefik.http.routers.frontend-secure.rule=Host("${MINIAPP_FRONTEND_DOMAIN}")'
+      - "traefik.http.routers.frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.frontend-secure.tls=true"
+      # middleware: HTTP to HTTPS redirect as defined by the file provider -> dynamic.yml (note the suffic "@file")
+      - "traefik.http.routers.frontend.middlewares=redirect-to-https@file"
+  
+  backend:
+    build: 
+      context: .
+      dockerfile: backend/Dockerfile
+      image: "miniapp-backend:${MINIAPP_SW_VERSION_TAG}"
+    container_name: ${MINIAPP_BACKEND_CONTAINER_NAME}
+    # hostname: '{{.Node.Hostname}}' this does NOT work
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_DB: ${MINIAPP_DB_NAME}
+      POSTGRES_USER: ${MINIAPP_DB_USER}
+      POSTGRES_PASSWORD: ${MINIAPP_DB_PASSWORD}
+    networks:
+      - ${NETWORK_PUBLIC_NAME}
+      - ${NETWORK_PRIVATE_NAME}  # needed to access the dB on the private network
+    labels:
+      # Enable this service routing to be managed by traefik
+      - "traefik.enable=true"
+
+      # Required by traefik for this service discovery
+      # telling traefik which network to use when connecting to this service
+      - "traefik.docker.network=${NETWORK_PUBLIC_NAME}"
+      
+      # HTTP router with a custom file provider (NO TLS on http)
+      # note: NO Docker provider here, but a custom file provider for middlewares and TLS
+      #- "traefik.http.routers.backendapi.rule=Host(`backend.localhost`)"
+      - 'traefik.http.routers.backendapi.rule=Host("${MINIAPP_BACKEND_DOMAIN}")'
+      - "traefik.http.routers.backendapi.entrypoints=web-service"
+      - "traefik.http.routers.backendapi.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.backendapi.service=backendapi"
+      
+      # HTTPS router (TLS on https)
+      - 'traefik.http.routers.backendapi-secure.rule=Host("${MINIAPP_BACKEND_DOMAIN}")'
+      - "traefik.http.routers.backendapi-secure.entrypoints=websecure"
+      - "traefik.http.routers.backendapi-secure.tls=true" # TLS on https
+      - "traefik.http.routers.backendapi-secure.service=backendapi"
+      
+      # loadbalancer: Service port definition
+      # note that the backend container port must be obviously identical in the python uvicorn script main.py
+      - "traefik.http.services.backendapi.loadbalancer.server.port=${MINIAPP_BACKEND_PORT_CONT}"
+
+  pgadmin:
+    image: "dpage/pgadmin4:9.4"
+    container_name: ${MINIAPP_PGADMIN_CONTAINER_NAME}
+    depends_on:
+      - postgres
+    env_file:
+      - .env.dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${MINIAPP_PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${MINIAPP_PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${MINIAPP_PGADMIN_PORT_HOST}:${MINIAPP_PGADMIN_PORT_CONT}"
+    volumes:
+      - ${MINIAPP_PGADMIN_DATA_VOLUME}:/var/lib/pgadmin
+      - ./pgadmin/pg_service.conf:/home/pgadmin/.pg_service.conf:ro
+    networks:
+      - ${NETWORK_PRIVATE_NAME}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  pgadmin_data:
+  pgdata:
+
+networks:
+  miniapp_public:
+    driver: bridge
+    name: ${NETWORK_PUBLIC_NAME}
+    ipam:
+      config:
+        - subnet: ${NETWORK_PUBLIC_SUBNET}
+          gateway: ${NETWORK_PUBLIC_GATEWAY}
+
+  miniapp_private:
+    driver: bridge
+    name: ${NETWORK_PRIVATE_NAME}
+    ipam:
+      config:
+        - subnet: ${NETWORK_PRIVATE_SUBNET}
+          gateway: ${NETWORK_PRIVATE_GATEWAY}

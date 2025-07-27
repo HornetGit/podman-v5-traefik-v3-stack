@@ -1,0 +1,28 @@
+FROM dpage/pgadmin4
+
+# Set environment variables (if needed for pgadmin customization)
+ENV PGADMIN_DEFAULT_EMAIL=%%PGADMIN_EMAIL%%
+ENV PGADMIN_DEFAULT_PASSWORD=%%PGADMIN_PASSWORD%%
+ENV PGADMIN_LISTEN_PORT=%%PGADMIN_PORT%%
+
+# set ENV where pgadmin will find the miniapp service
+# since there is no home directory for the pgadmin user
+# alternatively: create /home/pgadmin and copy the config there
+# ENV PGSERVICEFILE=/var/lib/pgadmin/.pg_service.conf
+
+# Create user/group if needed and copy service config
+USER root
+
+# Set up a real home for pgadmin user
+RUN mkdir -p /home/pgadmin && \
+    chown pgadmin:root /home/pgadmin
+
+# Set HOME explicitly (important for libpq)
+ENV HOME=/home/pgadmin
+
+# Copy service config to correct path
+COPY pg_service.conf /home/pgadmin/.pg_service.conf
+RUN chown pgadmin:root /home/pgadmin/.pg_service.conf && \
+    chmod 600 /home/pgadmin/.pg_service.conf
+
+USER pgadmin

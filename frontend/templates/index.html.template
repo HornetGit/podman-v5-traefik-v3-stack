@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MiniApp Home</title>
+</head>
+<body>
+  <h1>Hello World from MiniApp</h1>
+  <form id="messageForm">
+    <input type="text" id="messageInput" placeholder="Enter your message" />
+    <button type="submit">Submit</button>
+  </form>
+  <p id="result"></p>
+  <script>
+    const form = document.getElementById('messageForm');
+    const input = document.getElementById('messageInput');
+    const result = document.getElementById('result');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const response = await fetch("%%BACKEND_API_URL_HTTPS%%/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: input.value })
+        });
+        const data = await response.json();
+        result.innerText = data.status || "Error";
+      } catch (err) {
+        result.innerText = "⚠️ Request failed.";
+      }
+    });
+  </script>
+</body>
+</html>

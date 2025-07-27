@@ -1,0 +1,46 @@
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
+
+# Add PostgreSQL client tools for pg_isready
+# for DEBUG only: dialog, curl, apt-utils (to be removed for PROD)
+# Layer reduction: group all apt-get into 1 liner
+# DEV mode only (remove for PROD): Adding nano
+RUN apt-get update && \
+    apt-get install -y nano dialog apt-utils postgresql-client curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# DEBUG
+# COPY backend/debug.sh /debug.sh
+# RUN chmod +x /debug.sh
+
+# Set the working directory in the container
+WORKDIR /code/app
+
+# Copy the requirements file into the container at /app
+COPY backend/requirements.txt .
+
+# copy main and __init__.py files into the container at /code/app
+COPY backend/app .
+
+# COPY backend/wait-for-db.sh .
+COPY backend/wait-for-db.sh .
+
+# Install any dependencies specified in requirements.txt
+# options:
+# --workers to use multiple workers for uvicorn (case of multiple containers calling a fastapi process)
+# --proxy-headers is used to trust the headers from the reverse proxy (Traefik)
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Expose the port that Fastapi will run on
+EXPOSE "%%BACKEND_PORT%%"
+
+# Healthcheck workaround
+# HEALTHCHECK CMD pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" || exit 1
+ENTRYPOINT ["./wait-for-db.sh"]
+
+# Command to run the backend application using Uvicorn
+# PROD (no auto reload): CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "%%BACKEND_PORT%%"]
+# DEV: auto-reload enabled to aoid restarting the backend cntainer if modifying files directly in the container
+# NOTE: could be flagged as below for DEV/STAGING/PROD: 
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "%%BACKEND_PORT%%"%%RELOAD_FLAG%%]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "%%BACKEND_PORT%%", "--reload"]

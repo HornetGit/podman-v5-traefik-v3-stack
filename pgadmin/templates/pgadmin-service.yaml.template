@@ -1,0 +1,21 @@
+  pgadmin:
+    image: "dpage/pgadmin4:9.4"
+    container_name: ${MINIAPP_PGADMIN_CONTAINER_NAME}
+    depends_on:
+      - postgres
+    env_file:
+      - .env.dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${MINIAPP_PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${MINIAPP_PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${MINIAPP_PGADMIN_PORT_HOST}:${MINIAPP_PGADMIN_PORT_CONT}"
+    volumes:
+      - ${MINIAPP_PGADMIN_DATA_VOLUME}:/var/lib/pgadmin
+      - ./pgadmin/pg_service.conf:/home/pgadmin/.pg_service.conf:ro
+    networks:
+      - ${NETWORK_PRIVATE_NAME}
+    deploy:
+      resources:
+        limits:
+          memory: 256M

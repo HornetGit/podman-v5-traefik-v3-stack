@@ -1,0 +1,15 @@
+#!/bin/sh
+echo "[DB] Waiting for PostgreSQL daemon..."
+while ! ps aux | grep "[p]ostgres: checkpointer" > /dev/null; do
+  sleep 1
+done
+echo "✅ PostgreSQL is running"
+
+echo "[DB] Monitoring for inserted messages..."
+while true; do
+  psql -U %%DB_USER%% -d %%DB_NAME%% -c "SELECT COUNT(*) FROM messages;" | grep -q -v " 0" && {
+    echo "✅ Messages found in DB"
+    break
+  }
+  sleep 1
+done

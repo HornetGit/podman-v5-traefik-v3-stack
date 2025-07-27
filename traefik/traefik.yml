@@ -1,0 +1,41 @@
+global:
+  sendAnonymousUsage: false
+  checkNewVersion: false
+
+log:
+  level: DEBUG
+
+accessLog: {}
+
+api:
+  dashboard: true
+  debug: true
+  insecure: true
+
+entrypoints:
+  # frontend (and backend, for testing purpose only)
+  web-service:
+    address: ":80" # port 80, see podman-compose traefik port mapping to this SAME container port
+  # traefik dashboard
+  dashboard:
+    address: ":8081" # port 8081, as std traefik port
+  # https for frontend and traefik dashboard
+  websecure:
+    address: ":8443"  # port 8443 for localhost testing, port 443 otherwise
+
+providers:
+  docker:
+    # mounted podman-socket using the docker socket in the container
+    endpoint: "unix:///var/run/docker.sock"
+    # force to enable traefik management in each service (thus preventing traefik from auto-discovering)
+    exposedByDefault: false
+    network: miniapp_public  # miniapp_public
+  # TLS certs and middleware redirection:
+  # directory 
+  # file:
+  #   directory: /etc/traefik
+  #   watch: true
+  # direct filename path instead of its directory
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true

@@ -1,0 +1,10 @@
+#!/bin/sh
+echo "[Frontend] Testing connection to backend submit endpoint..."
+while true; do
+  curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" \
+       -d '{"message":"hello"}' http://%%BACKEND_API_URL%%/submit | grep -q "200" && {
+    echo "✅ Backend accepted submit request"
+    break
+  }
+  sleep 1
+done

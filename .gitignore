@@ -1,0 +1,58 @@
+# Local git initialization script
+*git_commit*.sh
+# *function*.sh
+# check_network_setup.sh
+# check_podman.sh
+# cleanup_HDD.sh
+# diagnose_miniapp.sh
+
+# Build directories and source downloads
+/tmp/
+*.tar.gz
+*.tar.xz
+/old/
+/log*/
+/config/*
+
+# Test files and generated configs
+*_test/
+debug_*
+*.backup.*
+
+# User-specific files
+.env
+.env.dev
+.env.local
+.env.*.local
+*.txt 
+*.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.logs
+logs/
+*.tmp
+*.temp
+
+# System files
+.Trash-*
+Thumbs.db
+ehthumbs.db
+
+# Backup files
+*_backup*
+*.bak
+*.backup
+*~
+
+# Runtime and cache
+*.pid
+*.cache

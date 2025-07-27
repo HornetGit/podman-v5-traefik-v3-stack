@@ -1,0 +1,6 @@
+#!/bin/sh
+echo "[Backend] Checking if API is reachable..."
+while ! curl -s %%BACKEND_API_URL%%/ | grep -q "Hello"; do
+  sleep 1
+done
+echo "✅ Backend API is live on port 8001"
