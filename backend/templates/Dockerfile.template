@@ -8,7 +8,6 @@ FROM python:3.11-slim
 RUN apt-get update && \
     apt-get install -y nano dialog apt-utils postgresql-client curl && \
     rm -rf /var/lib/apt/lists/*
-
 # DEBUG
 # COPY backend/debug.sh /debug.sh
 # RUN chmod +x /debug.sh

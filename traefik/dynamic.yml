@@ -17,5 +17,5 @@ http:
     redirect-to-https:
       redirectScheme:
         scheme: https
-        #port: "8443" # do NOT specify nor hardcode the port, if using a customer file provider instead of Docker provider
+        port: "8443" # doc: see https://doc.traefik.io/traefik/middlewares/http/redirectscheme/
         permanent: true
