@@ -4,8 +4,10 @@
 # OWNER: XCS HornetGit
 # LICENCE: MIT
 # CREATED: 04JUL2025
-# UPDATED: 28JUL2025
-# CHANGES: added "is_not_empty_file"
+# UPDATED: 29JUL2025
+# CHANGES: 
+# added: "is_not_empty_file",
+# added: "build_with_format" for container build format detection (dockerfile or OCI)
 
 set -e
 
@@ -107,6 +109,35 @@ service_is_running() {
     local service="$1"
     systemctl --user is-active --quiet "$service" 2>/dev/null
 }
+
+# check if a container dockerfile has an ACTIVE healthcheck or not
+# ignores commented out healthchecks (lines starting with # or whitespace + #)
+detect_healthcheck() {
+    local dockerfile="$1"
+    [ -f "$dockerfile" ] && grep -q "^[[:space:]]*HEALTHCHECK" "$dockerfile"
+}
+
+# define podman build format option (OCI or Dockerfile)
+# format: default if no healthcheck in the service docker file
+# format: docker if an healthcheck was detected in the service docker file, to prevent the podman HC bug
+# bug: WARN[0000] HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format
+# this bug is persistent at least until podman v5.3.1, prevening HC to work as expected
+# solutions: use docker format , or upgrade podman if bug fix in podman v5.5.6+
+# doc: https://stackoverflow.com/questions/76720076/podman-missing-health-check
+build_with_format() {
+    local dockerfile="$1"
+    
+    # Check if dockerfile exists and has healthcheck
+    if [ -f "$dockerfile" ] && detect_healthcheck "$dockerfile"; then
+        log_info "HEALTHCHECK detected in $dockerfile, requires --format docker"
+        echo "--format docker"
+    else
+        # Return empty string for default OCI format
+        echo ""
+    fi
+}
+
+
 
 
 # Clean up podman containers

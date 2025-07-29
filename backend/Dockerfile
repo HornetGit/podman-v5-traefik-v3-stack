@@ -47,8 +47,11 @@ EXPOSE "8001"
 # HEALTHCHECK --interval=15s --timeout=10s --start-period=40s --retries=3 \
 #   CMD pg_isready -h "$POSTGRES_DB_HOST" -p "$POSTGRES_DB_PORT" -U "$POSTGRES_DB_USER" || exit 1
 
-HEALTHCHECK --interval=15s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["pg_isready", "-h", "$POSTGRES_DB_HOST", "-p", "$POSTGRES_DB_PORT", "-U", "$POSTGRES_DB_USER"]
+
+# HEALTHCHECK --interval=15s --timeout=10s --start-period=40s --retries=3 \
+#   CMD pg_isready -h "miniapp_db" -p "5432" -U "miniapp_user" || exit 1
 
 # Command to run the backend application using Uvicorn
 # PROD (no auto reload): CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
