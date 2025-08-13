@@ -27,7 +27,7 @@ COPY backend/requirements.txt .
 COPY backend/app .
 
 # workaround for podman v4 (without healthchecks)
-# COPY backend/wait-for-db.sh .
+COPY backend/wait-for-db.sh .
 
 
 # Install any dependencies specified in requirements.txt
@@ -39,17 +39,41 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 # Exposing the port that Fastapi will run on
 EXPOSE "8001"
 
-# Healthcheck workaround
-# HEALTHCHECK CMD pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" || exit 1
-# ENTRYPOINT ["./wait-for-db.sh"]
+# CASE 2, Dockerfile CMD Array Format
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#   CMD ["curl", "-f", "http://google.com"]
+
+# Case 3: Dockerfile CMD Shell Format
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#   CMD curl -f http://google.com
+
+# CASE 4: Dockerfile CMD-SHELL Format
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#   CMD ["CMD-SHELL", "curl -f http://google.com"]
+
+# CASE 5: Dockerfile CMD-SHELL Format + build with --format Docker
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#   CMD ["CMD-SHELL", "curl -f http://google.com"]
+
+HEALTHCHECK --interval=15s --timeout=10s --start-period=40s --retries=3 \
+  CMD pg_isready -h "$POSTGRES_DB_HOST" -p "$POSTGRES_DB_PORT" -U "$POSTGRES_USER" || exit 1
+
+# Healthcheck redundancy
+ENTRYPOINT ["./wait-for-db.sh"]
 
 # Backend tests DB - this is the ONLY health check needed
 # HEALTHCHECK --interval=15s --timeout=10s --start-period=40s --retries=3 \
 #   CMD pg_isready -h "$POSTGRES_DB_HOST" -p "$POSTGRES_DB_PORT" -U "$POSTGRES_DB_USER" || exit 1
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["pg_isready", "-h", "$POSTGRES_DB_HOST", "-p", "$POSTGRES_DB_PORT", "-U", "$POSTGRES_DB_USER"]
+# cmd form
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+#    CMD ["pg_isready", "-h", "$POSTGRES_DB_HOST", "-p", "$POSTGRES_DB_PORT", "-U", "$POSTGRES_DB_USER"]
 
+# shell form
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+#   CMD pg_isready -h "$POSTGRES_DB_HOST" -p "$POSTGRES_DB_PORT" -U "$POSTGRES_DB_USER" || exit 1
+
+# hard coded
 # HEALTHCHECK --interval=15s --timeout=10s --start-period=40s --retries=3 \
 #   CMD pg_isready -h "miniapp_db" -p "5432" -U "miniapp_user" || exit 1
 

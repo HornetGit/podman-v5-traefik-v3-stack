@@ -1,0 +1,6 @@
+# for testing and debugging healthchecks only
+# FROM nginx:alpine
+# COPY . /usr/share/nginx/html
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+#   CMD nginx -t || exit 1

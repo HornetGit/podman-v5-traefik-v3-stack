@@ -11,5 +11,5 @@ sed -i "s|#unix_socket_directories =.*|unix_socket_directories = '/tmp'|" "$PGDA
 # Harden pg_hba.conf (optional)
 sed -i "s|host all all.*trust|host all all 0.0.0.0/0 md5|" "$PGDATA/pg_hba.conf"
 
-# Start default entrypoint (and thus, postgres: no need to daemonize teh container)
+# Start default entrypoint (and thus, postgres: no need to daemonize the container)
 exec docker-entrypoint.sh postgres

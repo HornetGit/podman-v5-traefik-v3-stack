@@ -11,6 +11,11 @@
 
 set -e
 
+# DEBUG mode: log into file if true
+DEBUG=true
+dbg_path=/tmp/debug.log
+[ -f "$dbg_path" ] && rm "$dbg_path"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -24,21 +29,40 @@ OK="\e[32mOK\e[0m"      # bright green
 WARN="\e[33mWARN\e[0m"  # yellow
 
 # Logging functions
+log_debugmode(){
+    [ "$DEBUG" = true ] && echo -e "$1" >> "$dbg_path"
+}
+
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    local msg="${BLUE}ℹ️ $1${NC}"
+    echo -e "$msg"
+    log_debugmode "$msg"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    local msg="${GREEN}✅ $1${NC}"
+    echo -e "$msg"
+    log_debugmode "$msg"
 }
 
 log_warning() {
-    echo -e "${YELLOW1}⚠️  $1${NC}"
+    local msg="${YELLOW1}⚠️  $1${NC}"
+    echo -e "$msg"
+    log_debugmode "$msg"
+}
+
+log_debug() {
+    local msg="${YELLOW1}DEBUG:  $1${NC}"
+    echo -e "$msg"
+    log_debugmode "$msg"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    local msg="${RED}❌ $1${NC}"
+    echo -e "$msg"
+    log_debugmode "$msg"
 }
+
 
 # continue or abort by the user
 # Usage: continue_or_abort [condition]

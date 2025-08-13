@@ -1,0 +1,86 @@
+.
+├── backend
+│   ├── app
+│   │   ├── db.py
+│   │   ├── __init__.py
+│   │   └── main.py
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── templates
+│   │   ├── db.py.template
+│   │   ├── debug.sh.template
+│   │   ├── Dockerfile.template
+│   │   ├── main.py.template
+│   │   ├── requirements.txt.template
+│   │   └── wait-for-db.sh.template
+│   └── wait-for-db.sh
+├── check_network_setup.sh
+├── check_podman.sh
+├── cleanup_HDD.sh
+├── config
+│   └── templates
+│       └── containers.conf.template
+├── db
+│   ├── Dockerfile
+│   ├── entrypoint.sh
+│   ├── init.sql
+│   ├── pgadmin
+│   └── templates
+│       ├── debug.sh.template
+│       ├── Dockerfile.template
+│       ├── entrypoint.sh.template
+│       ├── init.sql.template
+│       └── start_daemon_at_boot.sh
+├── diagnose_miniapp.sh
+├── docs
+│   └── images
+├── frontend
+│   ├── index.html
+│   ├── nginx.conf
+│   └── templates
+│       ├── debug.sh.template
+│       ├── index.html.template
+│       └── nginx.conf.template
+├── functions.sh
+├── git_commit.sh
+├── instructions
+│   ├── about_basic_tests.txt
+│   ├── about_env_file.txt
+│   └── about_host.txt
+├── logs
+│   ├── access.log
+│   └── traefik.log
+├── pgadmin
+│   ├── pg_service.conf
+│   └── templates
+│       ├── Dockerfile.template
+│       ├── pgadmin-service.yaml.template
+│       └── pg_service.conf.template
+├── podman-compose-dev.yaml
+├── restart_application.sh
+├── setup_certificates.sh
+├── setup_containers.sh
+├── start_containers_original.sh
+├── start_containers.sh
+├── stop_containers.sh
+├── test_reset_socket.sh
+├── traefik
+│   ├── acme
+│   │   └── acme.json
+│   ├── certs
+│   │   ├── localhost-cert.pem
+│   │   └── localhost-key.pem
+│   ├── dynamic.yml
+│   ├── logs
+│   │   ├── access.log
+│   │   └── traefik.log
+│   ├── templates
+│   │   ├── Dockerfile.template
+│   │   ├── dynamic.yml.template
+│   │   ├── traefik-service-letsencrypt.yaml.template
+│   │   ├── traefik-service.yaml.template
+│   │   └── traefik.yml.template
+│   └── traefik.yml
+└── tree.doc
+
+24 directories, 60 files
