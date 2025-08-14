@@ -146,11 +146,13 @@ build_command_array() {
             local build_cmd="podman build --format docker -t \"$image_tag\" -f \"$dockerfile\" \"$context\""
             local run_cmd="podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d $service"
             service_commands["$service"]="$build_cmd|$run_cmd"
-
+            #set_command "$build_cmd"
+            #set_command "$run_cmd"
         elif [ "$command_case" = "b" ]; then
             # Case b: Oneliner (1 command) - FIXED: Added specific service name
             local oneliner_cmd="podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d --build $service"
             service_commands["$service"]="$oneliner_cmd"
+            #set_command "$oneliner_cmd"
         fi
     done
 }
@@ -174,7 +176,7 @@ display_service_analysis() {
     # Sort commands a, b
     for cmd_case in a b; do
         if [[ -n "${command_cases[$cmd_case]}" ]]; then
-            echo "Command $cmd_case: ${command_cases[$cmd_case]}"
+            log_command "$cmd_case: ${command_cases[$cmd_case]}"
         fi
     done
     
@@ -210,7 +212,7 @@ display_all_commands() {
             IFS="|" read -ra commands <<< "${service_commands[$service]}"
             
             for i in "${!commands[@]}"; do
-                echo "  Command $((i+1)): ${commands[i]}"
+                log_command " $((i+1)): ${commands[i]}"
             done
         fi
     done
@@ -247,6 +249,7 @@ display_all_commands() {
 }
 
 # Function 1: Build and run with oneliner compose (command case b)
+# OBSOLETE
 build_and_run_oneliner() {
     local services_list=("$@")
     
@@ -266,14 +269,15 @@ build_and_run_oneliner() {
             podman rm -f "$container_name" 2>/dev/null || true
             
             # Build and run this specific service
-            echo "COMMAND: podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d --build $service"
-            podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d --build "$service"
+            log_command "podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d --build $service"
+            # podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d --build "$service"
+            set_command "podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d --build $service"
 
-            if [ $? -ne 0 ]; then
-                log_error "Failed to build and run $service with oneliner"
-                exit 1
-            fi
-            log_success "Started $service successfully"
+            # if [ $? -ne 0 ]; then
+            #     log_error "Failed to build and run $service with oneliner"
+            #     exit 1
+            # fi
+            # log_success "Started $service successfully"
 
         fi
     done
@@ -283,6 +287,7 @@ build_and_run_oneliner() {
 
 
 # Function 2: Build and run separately (command case a)
+# OBSOLETE
 build_and_run_separately() {
     local services_list=("$@")
     
@@ -302,23 +307,24 @@ build_and_run_separately() {
             # Build with docker format, managing teh tag as latest 
             # local image_tag="localhost/$(basename $(pwd))_${service}:latest"
             local image_tag=$(get_compose_image_tag "$service")
-            echo "COMMAND: podman build --format docker -t \"$image_tag\" -f \"$dockerfile\" \"$context\""
-            podman build --format docker -t "$image_tag" -f "$dockerfile" "$context"
-
-            if [ $? -ne 0 ]; then
-                log_error "Failed to build $service"
-                exit 1
-            fi
+            log_command "podman build --format docker -t \"$image_tag\" -f \"$dockerfile\" \"$context\""
+            #podman build --format docker -t "$image_tag" -f "$dockerfile" "$context"
+            set_command "podman build --format docker -t \"$image_tag\" -f \"$dockerfile\" \"$context\""
+            # if [ $? -ne 0 ]; then
+            #     log_error "Failed to build $service"
+            #     exit 1
+            # fi
 
             # tag the image with the name that podman-compose command expects
             local compose_expected_tag="version10_${service}:latest"
-            echo "TAGGING: podman tag \"$image_tag\" \"$compose_expected_tag\""
-            podman tag "$image_tag" "$compose_expected_tag"
+            log_info "TAGGING: podman tag \"$image_tag\" \"$compose_expected_tag\""
+            # podman tag "$image_tag" "$compose_expected_tag"
+            set_command "podman tag \"$image_tag\" \"$compose_expected_tag\""
 
-            if [ $? -ne 0 ]; then
-                log_error "Failed to tag $service"
-                exit 1
-            fi
+            # if [ $? -ne 0 ]; then
+            #     log_error "Failed to tag $service"
+            #     exit 1
+            # fi
 
             log_success "Built $service successfully"
         fi
@@ -327,32 +333,30 @@ build_and_run_separately() {
     # Run each service individually in dependency order
     log_info "Starting separately built services individually: ${services_list[*]}"
     for service in "${service_order[@]}"; do
+        log_info "|_ trying to start: $service"
         if [[ " ${services_list[*]} " =~ " ${service} " ]]; then
-            echo "COMMAND: podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d $service"
-            podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d "$service"
+            log_command "podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d $service"
+            set_command "podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d \"$service\""
+            # podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d "$service"
+            # podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml --podman-run-args=--replace up -d "$service"
+            # timeout 30 podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml --podman-run-args=--replace up -d "$service"
             # podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d --no-build "$service"
-            if [ $? -ne 0 ]; then
-                log_error "Failed to start $service"
-                exit 1
-            fi
-            log_success "Started $service successfully"
+
+            log_debug "Finished starting service: $service"
+        #     if [ $? -ne 0 ]; then
+        #         log_error "Failed to start $service"
+        #         exit 1
+        #     fi
+        #     log_success "Started $service successfully"
+        # else
+        #     log_info "$service: NOT in the service list"
         fi
     done
 
-    # Run ONLY the specific services we built (in dependency order)
-    # log_info "Starting only the separately built services: ${services_list[*]}"
-    # echo "COMMAND: podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d ${services_list[*]}"
-    # podman-compose --verbose --env-file .env.dev -f podman-compose-dev.yaml up -d "${services_list[@]}"
-
-    # if [ $? -eq 0 ]; then
-    #     log_success "Separate build and run completed successfully for: ${services_list[*]}"
-    # else
-    #     log_error "Failed to start services after separate build"
-    #     exit 1
-    # fi
 }
 
 # Function 3: Parse result array and call appropriate functions
+# OBSOLETE
 execute_build_and_run() {
     log_info "Executing build and run based on service analysis..."
     
@@ -379,7 +383,10 @@ execute_build_and_run() {
     if [ ${#separate_services[@]} -gt 0 ] && [ ${#oneliner_services[@]} -gt 0 ]; then
         # Both types exist - run separate build first, then oneliner
         log_info "Mixed service types detected - running separate build first"
+        log_info "|_separate build and run: ${separate_services[*]}"
         build_and_run_separately "${separate_services[@]}"
+
+        log_info "|_one-liner run: "${oneliner_services[*]}""
         build_and_run_oneliner "${oneliner_services[@]}"
 
     elif [ ${#separate_services[@]} -gt 0 ]; then
@@ -419,9 +426,10 @@ main() {
     display_all_commands
 
     # Execute build and run based on analysis
-    log_debug "Running : execute_build_and_run"
-    execute_build_and_run
-    
+    log_debug "Running : run_command"
+    execute_build_and_run #: kept functions but all are obsoletes
+    #run_command
+
     log_success "Miniapp deployment complete!"
 }
 

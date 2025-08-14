@@ -16,6 +16,13 @@ DEBUG=true
 dbg_path=/tmp/debug.log
 [ -f "$dbg_path" ] && rm "$dbg_path"
 
+# podman command file
+podman_cmd=command_list.sh
+[ -f "$podman_cmd" ] && rm "$podman_cmd"
+touch $podman_cmd
+chmod +x $podman_cmd
+echo "#!/bin/bash" > "$podman_cmd"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -63,6 +70,52 @@ log_error() {
     log_debugmode "$msg"
 }
 
+log_command() {
+    #set_command "$1"
+    local msg="${RED}CMD: $1${NC}"
+    echo -e "$msg"
+    log_debugmode "$msg"
+}
+
+set_command() {
+    local msg="$1"
+    echo -e "$msg" >> "$podman_cmd"
+    echo -e "sleep 3" >> "$podman_cmd"    
+}
+
+run_command() {
+
+    local script_file="$podman_cmd"
+
+    # Check if file exists
+    if [ ! -f "$script_file" ]; then
+        log_error "Script file not found: $script_file"
+        return 1
+    fi
+    
+    # Check if file is not empty
+    if [ ! -s "$script_file" ]; then
+        log_warning "Script file is empty: $script_file"
+        return 1
+    fi
+    
+    # Remove --verbose flag if DEBUG is false
+    if [ "$DEBUG" = false ]; then
+        sed -i 's/--verbose //g' "$script_file"
+    fi
+    
+    # Execute the script
+    log_info "Executing: $script_file"
+    ./"$script_file"
+    
+    # Check result
+    if [ $? -eq 0 ]; then
+        log_success "Script completed successfully"
+    else
+        log_error "Script failed with exit code $?"
+        return 1
+    fi
+}
 
 # continue or abort by the user
 # Usage: continue_or_abort [condition]
